@@ -413,58 +413,6 @@ async function getPredictionFromApi(symbol: AssetSymbol, timeframe: Timeframe): 
   return request<PredictionResponse>(`${API_BASE_URL}/prediction?${params.toString()}`);
 }
 
-
-function buildDatePredictionFallback(symbol: AssetSymbol, targetDateIso: string, history: HistoricalCandle[]): DatePredictionResponse {
-  const targetTs = Date.parse(targetDateIso);
-  if (!Number.isFinite(targetTs)) {
-    throw new Error('Please choose a valid future date.');
-  }
-
-  const nowTs = Date.now();
-  if (targetTs <= nowTs) {
-    throw new Error('Target date must be in the future.');
-  }
-
-  const horizonDays = Math.ceil((targetTs - nowTs) / (24 * 60 * 60 * 1000));
-  const closes = history.map((item) => item.close).filter((value) => Number.isFinite(value) && value > 0);
-
-  if (closes.length < 12) {
-    throw new Error('Not enough historical data to estimate this prediction.');
-  }
-
-  const returns = closes.slice(1).map((close, index) => (close - closes[index]) / closes[index]);
-  const avgReturn = mean(returns);
-  const variance = mean(returns.map((value) => (value - avgReturn) ** 2));
-  const volatility = Math.sqrt(Math.max(variance, 0));
-
-  const currentPriceUsd = closes.at(-1) ?? 0;
-  const expectedReturn = avgReturn * horizonDays;
-  const band = Math.max(volatility * Math.sqrt(horizonDays) * 1.28, 0.01);
-
-  const predictedPriceUsd = Math.max(currentPriceUsd * (1 + expectedReturn), 0);
-  const lowEstimateUsd = Math.max(currentPriceUsd * (1 + expectedReturn - band), 0);
-  const highEstimateUsd = Math.max(currentPriceUsd * (1 + expectedReturn + band), 0);
-
-  const confidencePct = Math.max(35, Math.min(92, (1 - volatility * Math.sqrt(horizonDays)) * 100));
-  const direction: DatePredictionResponse['direction'] =
-    expectedReturn > 0.01 ? 'up' : expectedReturn < -0.01 ? 'down' : 'flat';
-
-  return {
-    symbol,
-    targetDateIso: new Date(targetTs).toISOString(),
-    generatedAt: new Date().toISOString(),
-    horizonDays,
-    currentPriceUsd: Number(currentPriceUsd.toFixed(2)),
-    predictedPriceUsd: Number(predictedPriceUsd.toFixed(2)),
-    lowEstimateUsd: Number(lowEstimateUsd.toFixed(2)),
-    highEstimateUsd: Number(highEstimateUsd.toFixed(2)),
-    confidencePct: Number(confidencePct.toFixed(1)),
-    direction,
-    modelRunId: `local-fallback-${symbol.toLowerCase()}`,
-    lastModelRun: new Date().toISOString(),
-  };
-}
-
 async function getDatePredictionFromApi(symbol: AssetSymbol, targetDateIso: string): Promise<DatePredictionResponse> {
   if (!API_BASE_URL) throw new Error('API base URL not configured.');
   return request<DatePredictionResponse>(`${API_BASE_URL}/predictions/by-date`, {
@@ -706,12 +654,7 @@ export const apiClient = {
   },
 
   async getPredictionByDate(symbol: AssetSymbol, targetDateIso: string) {
-    try {
-      return await getDatePredictionFromApi(symbol, targetDateIso);
-    } catch {
-      const history = await this.getHistoricalData(symbol, '3M');
-      return buildDatePredictionFallback(symbol, targetDateIso, history);
-    }
+    return getDatePredictionFromApi(symbol, targetDateIso);
   },
 };
 

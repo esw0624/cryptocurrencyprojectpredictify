@@ -67,18 +67,15 @@ export function PredictionPanel({ prediction, datePrediction, selectedAsset, onP
 
       <form onSubmit={handleSubmit} className="date-prediction-form">
         <p className="label">Predict by future date ({selectedAsset})</p>
-        <label className="calendar-input-wrap">
-          <span className="calendar-icon" aria-hidden="true">✦</span>
-          <input
-            type="datetime-local"
-            value={targetDate}
-            onChange={(event) => setTargetDate(event.target.value)}
-            min={new Date().toISOString().slice(0, 16)}
-            required
-          />
-        </label>
-        <button type="submit" className="predict-btn" disabled={loading}>
-          {loading ? 'Predicting…' : 'Predict'}
+        <input
+          type="datetime-local"
+          value={targetDate}
+          onChange={(event) => setTargetDate(event.target.value)}
+          min={new Date().toISOString().slice(0, 16)}
+          required
+        />
+        <button type="submit" className="chip chip--small chip--active" disabled={loading}>
+          {loading ? 'Predicting…' : 'Generate estimate'}
         </button>
       </form>
 
