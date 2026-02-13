@@ -55,6 +55,10 @@ npm run typecheck
 npm test
 ```
 
+## Architecture Playbook
+
+For a practical implementation plan for date-based ML predictions and near real-time price updates (BTC/ETH/XRP), see `docs/CRYPTO_PREDICTION_SYSTEM_GUIDE.md`.
+
 ## Public Hosting + Custom Domain
 
 If you want a production URL for anyone to open (and a custom domain), follow `DEPLOYMENT_GUIDE.md`.

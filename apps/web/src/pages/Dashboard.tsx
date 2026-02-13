@@ -5,7 +5,7 @@ import { MarketCard } from '../components/MarketCard';
 import { PredictionPanel } from '../components/PredictionPanel';
 import { PriceChart } from '../components/PriceChart';
 import { TimeframeControls } from '../components/TimeframeControls';
-import { apiClient, type AssetSymbol, type HistoricalCandle, type MarketSnapshot, type PredictionResponse, type Timeframe } from '../lib/apiClient';
+import { apiClient, type AssetSymbol, type DatePredictionResponse, type HistoricalCandle, type MarketSnapshot, type PredictionResponse, type Timeframe } from '../lib/apiClient';
 
 const TRACKED_ASSETS: AssetSymbol[] = ['BTC', 'ETH', 'XRP'];
 const WS_STREAM_SYMBOL: Record<AssetSymbol, string> = {
@@ -29,10 +29,16 @@ export function Dashboard() {
   const [history, setHistory] = useState<HistoricalCandle[]>([]);
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<AssetSymbol>('BTC');
+  const [datePrediction, setDatePrediction] = useState<DatePredictionResponse | null>(null);
   const [timeframe, setTimeframe] = useState<Timeframe>('1M');
   const [chartMode, setChartMode] = useState<'line' | 'candlestick'>('line');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+
+  useEffect(() => {
+    setDatePrediction(null);
+  }, [selectedAsset]);
 
   useEffect(() => {
     const remainingAssets = TRACKED_ASSETS.filter((asset) => asset !== selectedAsset);
@@ -148,6 +154,11 @@ export function Dashboard() {
 
   const selectedMarket = useMemo(() => markets.find((market) => market.symbol === selectedAsset), [markets, selectedAsset]);
 
+  async function handlePredictByDate(targetDateIso: string) {
+    const response = await apiClient.getPredictionByDate(selectedAsset, targetDateIso);
+    setDatePrediction(response);
+  }
+
   const sparklineData = useMemo(
     () => history.map((item) => ({ v: item.close })),
     [history]
@@ -241,7 +252,14 @@ export function Dashboard() {
               </div>
               <PriceChart data={history} mode={chartMode} timeframe={timeframe} />
             </div>
-            {prediction && <PredictionPanel prediction={prediction} />}
+            {prediction && (
+              <PredictionPanel
+                prediction={prediction}
+                datePrediction={datePrediction}
+                selectedAsset={selectedAsset}
+                onPredictByDate={handlePredictByDate}
+              />
+            )}
           </section>
         </>
       )}
