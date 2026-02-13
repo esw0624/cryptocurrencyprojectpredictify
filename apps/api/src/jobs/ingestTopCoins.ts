@@ -1,5 +1,5 @@
-import { IngestService } from '../services/ingestService';
-import { TOP_COIN_SYMBOLS } from '../providers/types';
+import { IngestService } from '../services/ingestService.js';
+import { TOP_COIN_SYMBOLS } from '../providers/types.js';
 
 export interface IngestTopCoinsJobConfig {
   intervalMs?: number;

@@ -134,11 +134,21 @@ async function request<T>(url: string, retry = MAX_RETRIES): Promise<T> {
     const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) {
       const message = await response.text();
-      throw new Error(requestError(response, message));
+      const error = new Error(requestError(response, message)) as Error & { status?: number };
+      error.status = response.status;
+      throw error;
     }
     return response.json() as Promise<T>;
   } catch (error) {
-    if (retry > 0) {
+    const status = error instanceof Error && 'status' in error ? Number((error as { status?: number }).status) : undefined;
+    const isAbort = error instanceof DOMException && error.name === 'AbortError';
+    const shouldRetry =
+      isAbort ||
+      status === 429 ||
+      status === undefined ||
+      (typeof status === 'number' && status >= 500);
+
+    if (retry > 0 && shouldRetry) {
       await new Promise((resolve) => window.setTimeout(resolve, RETRY_DELAY_MS * (MAX_RETRIES - retry + 1)));
       return request<T>(url, retry - 1);
     }
@@ -365,17 +375,20 @@ async function getPredictionFromApi(symbol: AssetSymbol, timeframe: Timeframe): 
 }
 
 async function firstSuccessful<T>(requests: Array<() => Promise<T>>): Promise<T> {
-  const results = await Promise.allSettled(requests.map((run) => run()));
+  let firstError: unknown;
 
-  for (const result of results) {
-    if (result.status === 'fulfilled') {
-      return result.value;
+  for (const run of requests) {
+    try {
+      return await run();
+    } catch (error) {
+      if (firstError === undefined) {
+        firstError = error;
+      }
     }
   }
 
-  const firstFailure = results.find((result) => result.status === 'rejected');
-  if (firstFailure && 'reason' in firstFailure && firstFailure.reason instanceof Error) {
-    throw firstFailure.reason;
+  if (firstError instanceof Error) {
+    throw firstError;
   }
 
   throw new Error('All providers failed.');
@@ -587,5 +600,6 @@ export const apiClient = {
 
 
 export const __internalApiClientHelpers = {
-  ensureAllRequestedSymbols
+  ensureAllRequestedSymbols,
+  firstSuccessful
 };

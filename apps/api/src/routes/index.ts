@@ -1,10 +1,10 @@
 import { Router } from 'express';
 
-import { assetsRouter } from './assets';
-import { historyRouter } from './history';
-import { marketsRouter } from './markets';
-import { modelsRouter } from './models';
-import { predictionsRouter } from './predictions';
+import { assetsRouter } from './assets.js';
+import { historyRouter } from './history.js';
+import { marketsRouter } from './markets.js';
+import { modelsRouter } from './models.js';
+import { predictionsRouter } from './predictions.js';
 
 export const apiRouter = Router();
 

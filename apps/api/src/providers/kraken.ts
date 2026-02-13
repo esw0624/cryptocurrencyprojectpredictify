@@ -1,4 +1,4 @@
-import { CandleProvider, ProviderFetchOptions, SupportedSymbol, UnifiedCandle } from './types';
+import { CandleProvider, ProviderFetchOptions, SupportedSymbol, UnifiedCandle } from './types.js';
 
 const KRAKEN_BASE_URL = 'https://api.kraken.com/0/public/OHLC';
 

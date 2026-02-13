@@ -8,6 +8,11 @@ import { TimeframeControls } from '../components/TimeframeControls';
 import { apiClient, type AssetSymbol, type HistoricalCandle, type MarketSnapshot, type PredictionResponse, type Timeframe } from '../lib/apiClient';
 
 const TRACKED_ASSETS: AssetSymbol[] = ['BTC', 'ETH', 'XRP'];
+const WS_STREAM_SYMBOL: Record<AssetSymbol, string> = {
+  BTC: 'btcusdt',
+  ETH: 'ethusdt',
+  XRP: 'xrpusdt'
+};
 
 const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
 
@@ -73,13 +78,73 @@ export function Dashboard() {
 
     const refreshTimer = window.setInterval(() => {
       void loadData(false);
-    }, 15_000);
+    }, 60_000);
 
     return () => {
       isMounted = false;
       window.clearInterval(refreshTimer);
     };
   }, [selectedAsset, timeframe]);
+
+  useEffect(() => {
+    const streams = TRACKED_ASSETS.map((asset) => `${WS_STREAM_SYMBOL[asset]}@miniTicker`).join('/');
+    const socket = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${streams}`);
+
+    socket.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data) as { data?: { s?: string; c?: string; P?: string } };
+        const update = payload.data;
+        if (!update?.s || !update.c || !update.P) {
+          return;
+        }
+
+        const symbol = update.s.replace('USDT', '') as AssetSymbol;
+        const nextPrice = Number(update.c);
+        const nextChangePct = Number(update.P);
+
+        if (!Number.isFinite(nextPrice) || !Number.isFinite(nextChangePct)) {
+          return;
+        }
+
+        setMarkets((currentMarkets) => {
+          if (currentMarkets.length === 0) return currentMarkets;
+
+          return currentMarkets.map((market) =>
+            market.symbol === symbol
+              ? {
+                  ...market,
+                  priceUsd: nextPrice,
+                  change24hPct: nextChangePct
+                }
+              : market
+          );
+        });
+
+        if (symbol === selectedAsset) {
+          setHistory((currentHistory) => {
+            if (currentHistory.length === 0) return currentHistory;
+
+            const nextHistory = [...currentHistory];
+            const last = nextHistory[nextHistory.length - 1];
+            nextHistory[nextHistory.length - 1] = {
+              ...last,
+              close: nextPrice,
+              high: Math.max(last.high, nextPrice),
+              low: Math.min(last.low, nextPrice)
+            };
+
+            return nextHistory;
+          });
+        }
+      } catch {
+        // Ignore malformed stream payloads.
+      }
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, [selectedAsset]);
 
   const selectedMarket = useMemo(() => markets.find((market) => market.symbol === selectedAsset), [markets, selectedAsset]);
 

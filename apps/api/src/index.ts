@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 
-import { createApp } from './app';
+import { createApp } from './app.js';
 
 dotenv.config();
 
