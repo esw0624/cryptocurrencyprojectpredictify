@@ -50,15 +50,6 @@ A ready-to-use `netlify.toml` is included.
 
 ---
 
-## Option C: Continue with GitHub Pages
-
-If you keep GitHub Pages:
-- Make sure **Settings → Pages → Source** is **GitHub Actions**.
-- Push to `main` or `master` so `.github/workflows/deploy-pages.yml` runs.
-- Check **Actions** tab for deployment success.
-
----
-
 ## Domain checklist (works for any host)
 
 1. Buy a domain from a registrar (Namecheap, Cloudflare, GoDaddy, etc.).
@@ -68,7 +59,7 @@ If you keep GitHub Pages:
 3. Point DNS to your host:
    - usually **A records** (root)
    - and/or **CNAME** (subdomain)
-4. Enable HTTPS (automatic on Vercel/Netlify/GitHub Pages once DNS is correct).
+4. Enable HTTPS (automatic on Vercel/Netlify once DNS is correct).
 
 ---
 

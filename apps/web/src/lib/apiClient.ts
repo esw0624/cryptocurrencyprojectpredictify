@@ -40,7 +40,12 @@ const ASSET_CONFIG: Record<AssetSymbol, { ticker: BinanceSymbol; name: string }>
 const BINANCE_BASE_URL = 'https://api.binance.com/api/v3';
 const COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3';
 const COINCAP_BASE_URL = 'https://api.coincap.io/v2';
-const API_BASE_URL = (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL?.replace(/\/$/, '') ?? 'http://localhost:3000/api';
+const CONFIGURED_API_BASE_URL = (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL?.replace(/\/$/, '');
+const API_BASE_URL =
+  CONFIGURED_API_BASE_URL ??
+  (typeof window !== 'undefined' && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+    ? 'http://localhost:3000/api'
+    : null);
 const REQUEST_TIMEOUT_MS = 8_000;
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 500;
@@ -342,18 +347,38 @@ function buildPrediction(symbol: AssetSymbol, timeframe: Timeframe, history: His
 }
 
 async function getMarketSnapshotsFromApi(symbols: AssetSymbol[]): Promise<MarketSnapshot[]> {
+  if (!API_BASE_URL) throw new Error('API base URL not configured.');
   const params = new URLSearchParams({ symbols: symbols.join(',') });
   return request<MarketSnapshot[]>(`${API_BASE_URL}/markets?${params.toString()}`);
 }
 
 async function getHistoricalDataFromApi(symbol: AssetSymbol, timeframe: Timeframe): Promise<HistoricalCandle[]> {
+  if (!API_BASE_URL) throw new Error('API base URL not configured.');
   const params = new URLSearchParams({ symbol, timeframe });
   return request<HistoricalCandle[]>(`${API_BASE_URL}/history?${params.toString()}`);
 }
 
 async function getPredictionFromApi(symbol: AssetSymbol, timeframe: Timeframe): Promise<PredictionResponse> {
+  if (!API_BASE_URL) throw new Error('API base URL not configured.');
   const params = new URLSearchParams({ symbol, timeframe });
   return request<PredictionResponse>(`${API_BASE_URL}/prediction?${params.toString()}`);
+}
+
+async function firstSuccessful<T>(requests: Array<() => Promise<T>>): Promise<T> {
+  const results = await Promise.allSettled(requests.map((run) => run()));
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      return result.value;
+    }
+  }
+
+  const firstFailure = results.find((result) => result.status === 'rejected');
+  if (firstFailure && 'reason' in firstFailure && firstFailure.reason instanceof Error) {
+    throw firstFailure.reason;
+  }
+
+  throw new Error('All providers failed.');
 }
 
 async function getMarketSnapshotsFromBinance(symbols: AssetSymbol[]): Promise<MarketSnapshot[]> {
@@ -497,31 +522,21 @@ export const apiClient = {
         return data;
       } catch {
         try {
-          const data = await getMarketSnapshotsFromBinance(symbols);
+          const data = await firstSuccessful([
+            () => getMarketSnapshotsFromBinance(symbols),
+            () => getMarketSnapshotsFromCoinCap(symbols),
+            () => getMarketSnapshotsFromCoinGecko(symbols)
+          ]);
           writeCache(cacheToken, data);
           writeMemoryCache(cacheToken, data);
           return data;
         } catch {
-          try {
-            const data = await getMarketSnapshotsFromCoinCap(symbols);
-            writeCache(cacheToken, data);
-            writeMemoryCache(cacheToken, data);
-            return data;
-          } catch {
-            try {
-              const data = await getMarketSnapshotsFromCoinGecko(symbols);
-              writeCache(cacheToken, data);
-              writeMemoryCache(cacheToken, data);
-              return data;
-            } catch {
-              const cached = readCache<MarketSnapshot[]>(cacheToken);
-              if (cached?.length) {
-                writeMemoryCache(cacheToken, cached);
-                return cached;
-              }
-              throw new Error('Unable to load market snapshots from live providers.');
-            }
+          const cached = readCache<MarketSnapshot[]>(cacheToken);
+          if (cached?.length) {
+            writeMemoryCache(cacheToken, cached);
+            return cached;
           }
+          throw new Error('Unable to load market snapshots from live providers.');
         }
       }
     });
@@ -540,31 +555,21 @@ export const apiClient = {
         return data;
       } catch {
         try {
-          const data = await getHistoricalDataFromBinance(symbol, timeframe);
+          const data = await firstSuccessful([
+            () => getHistoricalDataFromBinance(symbol, timeframe),
+            () => getHistoricalDataFromCoinCap(symbol, timeframe),
+            () => getHistoricalDataFromCoinGecko(symbol, timeframe)
+          ]);
           writeCache(cacheToken, data);
           writeMemoryCache(cacheToken, data);
           return data;
         } catch {
-          try {
-            const data = await getHistoricalDataFromCoinCap(symbol, timeframe);
-            writeCache(cacheToken, data);
-            writeMemoryCache(cacheToken, data);
-            return data;
-          } catch {
-            try {
-              const data = await getHistoricalDataFromCoinGecko(symbol, timeframe);
-              writeCache(cacheToken, data);
-              writeMemoryCache(cacheToken, data);
-              return data;
-            } catch {
-              const cached = readCache<HistoricalCandle[]>(cacheToken);
-              if (cached?.length) {
-                writeMemoryCache(cacheToken, cached);
-                return cached;
-              }
-              throw new Error(`Unable to load historical data for ${symbol}.`);
-            }
+          const cached = readCache<HistoricalCandle[]>(cacheToken);
+          if (cached?.length) {
+            writeMemoryCache(cacheToken, cached);
+            return cached;
           }
+          throw new Error(`Unable to load historical data for ${symbol}.`);
         }
       }
     });
