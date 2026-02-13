@@ -395,6 +395,46 @@ function buildPrediction(symbol: AssetSymbol, timeframe: Timeframe, history: His
   };
 }
 
+function buildDatePrediction(symbol: AssetSymbol, targetDateIso: string, history: HistoricalCandle[]): DatePredictionResponse {
+  const now = Date.now();
+  const targetTs = Date.parse(targetDateIso);
+  if (!Number.isFinite(targetTs)) {
+    throw new Error('targetDateIso must be a valid ISO date string');
+  }
+  if (targetTs <= now) {
+    throw new Error('targetDateIso must be in the future');
+  }
+
+  const horizonDays = Math.ceil((targetTs - now) / (24 * 60 * 60 * 1000));
+  const first = history[0]?.close ?? 0;
+  const currentPriceUsd = history.at(-1)?.close ?? 0;
+  const momentum = first === 0 ? 0 : (currentPriceUsd - first) / first;
+  const projectedReturn = momentum * Math.min(horizonDays / 30, 6) * 0.35;
+  const volatilityProxy = Math.max(Math.abs(momentum) * 0.45, 0.02);
+
+  const predictedPriceUsd = Math.max(currentPriceUsd * (1 + projectedReturn), 0);
+  const rangeBand = currentPriceUsd * volatilityProxy;
+  const lowEstimateUsd = Math.max(predictedPriceUsd - rangeBand, 0);
+  const highEstimateUsd = predictedPriceUsd + rangeBand;
+  const direction: DatePredictionResponse['direction'] =
+    projectedReturn > 0.01 ? 'up' : projectedReturn < -0.01 ? 'down' : 'flat';
+
+  return {
+    symbol,
+    targetDateIso: new Date(targetTs).toISOString(),
+    generatedAt: new Date().toISOString(),
+    horizonDays,
+    currentPriceUsd,
+    predictedPriceUsd,
+    lowEstimateUsd,
+    highEstimateUsd,
+    confidencePct: Math.max(38, Math.min(90, 76 - horizonDays * 0.08 - volatilityProxy * 100)),
+    direction,
+    modelRunId: `client-fallback-${symbol.toLowerCase()}`,
+    lastModelRun: new Date().toISOString()
+  };
+}
+
 async function getMarketSnapshotsFromApi(symbols: AssetSymbol[]): Promise<MarketSnapshot[]> {
   if (!API_BASE_URL) throw new Error('API base URL not configured.');
   const params = new URLSearchParams({ symbols: symbols.join(',') });
@@ -654,7 +694,12 @@ export const apiClient = {
   },
 
   async getPredictionByDate(symbol: AssetSymbol, targetDateIso: string) {
-    return getDatePredictionFromApi(symbol, targetDateIso);
+    try {
+      return await getDatePredictionFromApi(symbol, targetDateIso);
+    } catch {
+      const history = await this.getHistoricalData(symbol, '1M');
+      return buildDatePrediction(symbol, targetDateIso, history);
+    }
   },
 };
 
