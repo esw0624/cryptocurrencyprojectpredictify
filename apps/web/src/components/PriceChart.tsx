@@ -61,10 +61,7 @@ export function PriceChart({ data, mode, timeframe }: PriceChartProps) {
   return (
     <section className="panel chart-panel">
       <div className="panel__header chart-panel__header">
-        <div>
-          <h3>Price Chart</h3>
-          <span className="muted">Inspired by pro exchange layouts with precise timestamp tracking.</span>
-        </div>
+        <h3>Price Chart</h3>
         <span className="timeline-pill">Timeline: date + time</span>
       </div>
       <div className="chart-wrap">

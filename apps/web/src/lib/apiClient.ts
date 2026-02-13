@@ -31,6 +31,21 @@ export interface PredictionResponse {
   lastModelRun: string;
 }
 
+export interface DatePredictionResponse {
+  symbol: AssetSymbol;
+  targetDateIso: string;
+  generatedAt: string;
+  horizonDays: number;
+  currentPriceUsd: number;
+  predictedPriceUsd: number;
+  lowEstimateUsd: number;
+  highEstimateUsd: number;
+  confidencePct: number;
+  direction: 'up' | 'down' | 'flat';
+  modelRunId: string;
+  lastModelRun: string;
+}
+
 const ASSET_CONFIG: Record<AssetSymbol, { ticker: BinanceSymbol; name: string }> = {
   BTC: { ticker: 'BTCUSDT', name: 'Bitcoin' },
   ETH: { ticker: 'ETHUSDT', name: 'Ethereum' },
@@ -126,12 +141,12 @@ function writeCache<T>(key: string, data: T) {
   }
 }
 
-async function request<T>(url: string, retry = MAX_RETRIES): Promise<T> {
+async function request<T>(url: string, init?: RequestInit, retry = MAX_RETRIES): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, { ...init, signal: controller.signal });
     if (!response.ok) {
       const message = await response.text();
       const error = new Error(requestError(response, message)) as Error & { status?: number };
@@ -150,7 +165,7 @@ async function request<T>(url: string, retry = MAX_RETRIES): Promise<T> {
 
     if (retry > 0 && shouldRetry) {
       await new Promise((resolve) => window.setTimeout(resolve, RETRY_DELAY_MS * (MAX_RETRIES - retry + 1)));
-      return request<T>(url, retry - 1);
+      return request<T>(url, init, retry - 1);
     }
 
     throw error;
@@ -212,6 +227,25 @@ function ensureAllRequestedSymbols<T extends { symbol: AssetSymbol }>(
   }
 
   return requestedSymbols.map((symbol) => bySymbol.get(symbol) as T);
+}
+
+function mergeSnapshotsBySymbol(requestedSymbols: AssetSymbol[], sources: MarketSnapshot[][]): MarketSnapshot[] {
+  const merged = new Map<AssetSymbol, MarketSnapshot>();
+
+  for (const rows of sources) {
+    for (const row of rows) {
+      if (!merged.has(row.symbol)) {
+        merged.set(row.symbol, row);
+      }
+    }
+  }
+
+  const missing = requestedSymbols.filter((symbol) => !merged.has(symbol));
+  if (missing.length > 0) {
+    throw new Error(`Unable to load market snapshots for ${missing.join(', ')}`);
+  }
+
+  return requestedSymbols.map((symbol) => merged.get(symbol) as MarketSnapshot);
 }
 
 type BinanceKline = [
@@ -320,6 +354,11 @@ function toCoinCapInterval(timeframe: Timeframe): { interval: 'm5' | 'h1' | 'h6'
   }
 }
 
+function mean(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
 function toCoinGeckoDays(timeframe: Timeframe): string {
   switch (timeframe) {
     case '1D':
@@ -372,6 +411,67 @@ async function getPredictionFromApi(symbol: AssetSymbol, timeframe: Timeframe): 
   if (!API_BASE_URL) throw new Error('API base URL not configured.');
   const params = new URLSearchParams({ symbol, timeframe });
   return request<PredictionResponse>(`${API_BASE_URL}/prediction?${params.toString()}`);
+}
+
+
+function buildDatePredictionFallback(symbol: AssetSymbol, targetDateIso: string, history: HistoricalCandle[]): DatePredictionResponse {
+  const targetTs = Date.parse(targetDateIso);
+  if (!Number.isFinite(targetTs)) {
+    throw new Error('Please choose a valid future date.');
+  }
+
+  const nowTs = Date.now();
+  if (targetTs <= nowTs) {
+    throw new Error('Target date must be in the future.');
+  }
+
+  const horizonDays = Math.ceil((targetTs - nowTs) / (24 * 60 * 60 * 1000));
+  const closes = history.map((item) => item.close).filter((value) => Number.isFinite(value) && value > 0);
+
+  if (closes.length < 12) {
+    throw new Error('Not enough historical data to estimate this prediction.');
+  }
+
+  const returns = closes.slice(1).map((close, index) => (close - closes[index]) / closes[index]);
+  const avgReturn = mean(returns);
+  const variance = mean(returns.map((value) => (value - avgReturn) ** 2));
+  const volatility = Math.sqrt(Math.max(variance, 0));
+
+  const currentPriceUsd = closes.at(-1) ?? 0;
+  const expectedReturn = avgReturn * horizonDays;
+  const band = Math.max(volatility * Math.sqrt(horizonDays) * 1.28, 0.01);
+
+  const predictedPriceUsd = Math.max(currentPriceUsd * (1 + expectedReturn), 0);
+  const lowEstimateUsd = Math.max(currentPriceUsd * (1 + expectedReturn - band), 0);
+  const highEstimateUsd = Math.max(currentPriceUsd * (1 + expectedReturn + band), 0);
+
+  const confidencePct = Math.max(35, Math.min(92, (1 - volatility * Math.sqrt(horizonDays)) * 100));
+  const direction: DatePredictionResponse['direction'] =
+    expectedReturn > 0.01 ? 'up' : expectedReturn < -0.01 ? 'down' : 'flat';
+
+  return {
+    symbol,
+    targetDateIso: new Date(targetTs).toISOString(),
+    generatedAt: new Date().toISOString(),
+    horizonDays,
+    currentPriceUsd: Number(currentPriceUsd.toFixed(2)),
+    predictedPriceUsd: Number(predictedPriceUsd.toFixed(2)),
+    lowEstimateUsd: Number(lowEstimateUsd.toFixed(2)),
+    highEstimateUsd: Number(highEstimateUsd.toFixed(2)),
+    confidencePct: Number(confidencePct.toFixed(1)),
+    direction,
+    modelRunId: `local-fallback-${symbol.toLowerCase()}`,
+    lastModelRun: new Date().toISOString(),
+  };
+}
+
+async function getDatePredictionFromApi(symbol: AssetSymbol, targetDateIso: string): Promise<DatePredictionResponse> {
+  if (!API_BASE_URL) throw new Error('API base URL not configured.');
+  return request<DatePredictionResponse>(`${API_BASE_URL}/predictions/by-date`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ symbol, targetDateIso })
+  });
 }
 
 async function firstSuccessful<T>(requests: Array<() => Promise<T>>): Promise<T> {
@@ -535,14 +635,22 @@ export const apiClient = {
         return data;
       } catch {
         try {
-          const data = await firstSuccessful([
-            () => getMarketSnapshotsFromBinance(symbols),
-            () => getMarketSnapshotsFromCoinCap(symbols),
-            () => getMarketSnapshotsFromCoinGecko(symbols)
+          const providerResults = await Promise.allSettled([
+            getMarketSnapshotsFromBinance(symbols),
+            getMarketSnapshotsFromCoinCap(symbols),
+            getMarketSnapshotsFromCoinGecko(symbols)
           ]);
-          writeCache(cacheToken, data);
-          writeMemoryCache(cacheToken, data);
-          return data;
+
+          const snapshots = mergeSnapshotsBySymbol(
+            symbols,
+            providerResults
+              .filter((result): result is PromiseFulfilledResult<MarketSnapshot[]> => result.status === 'fulfilled')
+              .map((result) => result.value)
+          );
+
+          writeCache(cacheToken, snapshots);
+          writeMemoryCache(cacheToken, snapshots);
+          return snapshots;
         } catch {
           const cached = readCache<MarketSnapshot[]>(cacheToken);
           if (cached?.length) {
@@ -595,11 +703,21 @@ export const apiClient = {
       const sourceHistory = history ?? (await this.getHistoricalData(symbol, timeframe));
       return buildPrediction(symbol, timeframe, sourceHistory);
     }
-  }
+  },
+
+  async getPredictionByDate(symbol: AssetSymbol, targetDateIso: string) {
+    try {
+      return await getDatePredictionFromApi(symbol, targetDateIso);
+    } catch {
+      const history = await this.getHistoricalData(symbol, '3M');
+      return buildDatePredictionFallback(symbol, targetDateIso, history);
+    }
+  },
 };
 
 
 export const __internalApiClientHelpers = {
   ensureAllRequestedSymbols,
-  firstSuccessful
+  firstSuccessful,
+  mergeSnapshotsBySymbol
 };
