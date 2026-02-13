@@ -1,0 +1,32 @@
+name: Feature prompt
+description: Propose a new capability, experiment, or prompt-driven enhancement.
+title: '[Feature]: '
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What gap are we trying to close?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Include user-facing behavior and implementation notes.
+    validations:
+      required: true
+  - type: textarea
+    id: prompt
+    attributes:
+      label: Prompt or workflow context
+      description: If this is prompt-driven, include prompt draft and expected outputs.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Concrete conditions to consider this complete.
+    validations:
+      required: true

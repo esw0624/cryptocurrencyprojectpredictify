@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Predictify Lite</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 0; padding: 24px; background: #0b1020; color: #e6edf3; }
+      h1 { margin-top: 0; }
+      .hint { color: #9fb0c3; margin-bottom: 18px; }
+      .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+      .card { background: #121a2e; border: 1px solid #253150; border-radius: 10px; padding: 14px; }
+      .price { font-size: 1.2rem; font-weight: 700; }
+      .up { color: #40c463; }
+      .down { color: #ff7b72; }
+      button { border: 1px solid #3d4f78; background: #1d2a46; color: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+      #status { margin-top: 10px; color: #9fb0c3; }
+    </style>
+  </head>
+  <body>
+    <h1>Predictify Lite</h1>
+    <p class="hint">Lightweight live market dashboard with no dependency install required.</p>
+    <button id="refresh">Refresh</button>
+    <p id="status">Loading...</p>
+    <section class="grid" id="cards"></section>
+
+    <script type="module">
+      const assets = [
+        { ticker: 'BTCUSDT', symbol: 'BTC' },
+        { ticker: 'ETHUSDT', symbol: 'ETH' },
+        { ticker: 'XRPUSDT', symbol: 'XRP' }
+      ];
+      const statusEl = document.getElementById('status');
+      const cardsEl = document.getElementById('cards');
+      const refreshBtn = document.getElementById('refresh');
+
+      async function fetchAllTickers() {
+        const symbols = encodeURIComponent(JSON.stringify(assets.map(a => a.ticker)));
+        const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=${symbols}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      }
+
+      async function fetchTicker(ticker) {
+        const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${ticker}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }
+
+      async function load() {
+        statusEl.textContent = 'Loading market prices...';
+
+        try {
+          const batch = await fetchAllTickers();
+          const bySymbol = new Map(batch.map(item => [item.symbol, item]));
+
+          const missingAssets = assets.filter(asset => !bySymbol.has(asset.ticker));
+
+          if (missingAssets.length > 0) {
+            await Promise.all(missingAssets.map(async asset => {
+              const row = await fetchTicker(asset.ticker);
+              bySymbol.set(asset.ticker, row);
+            }));
+          }
+
+          cardsEl.innerHTML = assets.map(asset => {
+            const row = bySymbol.get(asset.ticker) || {};
+            const change = Number(row.priceChangePercent || 0);
+            const direction = change >= 0 ? 'up' : 'down';
+            return `
+              <article class="card">
+                <h2>${asset.symbol}</h2>
+                <div class="price">$${Number(row.lastPrice || 0).toLocaleString()}</div>
+                <p class="${direction}">24h: ${change.toFixed(2)}%</p>
+              </article>
+            `;
+          }).join('');
+
+          statusEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+        } catch (error) {
+          statusEl.textContent = `Failed to fetch market data: ${error.message}`;
+          cardsEl.innerHTML = '';
+        }
+      }
+
+      refreshBtn.addEventListener('click', load);
+      load();
+      setInterval(load, 15000);
+    </script>
+  </body>
+</html>

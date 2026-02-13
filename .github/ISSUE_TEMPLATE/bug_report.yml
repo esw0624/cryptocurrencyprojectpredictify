@@ -1,0 +1,41 @@
+name: Bug report
+description: Report incorrect behavior, regressions, or runtime failures.
+title: '[Bug]: '
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe what is broken.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include deterministic steps and sample data/prompt if relevant.
+      placeholder: |
+        1. Run ...
+        2. Execute prompt/data input ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Commit SHA, branch, OS, Node version, and model/provider details if applicable.
