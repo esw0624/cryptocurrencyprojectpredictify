@@ -31,6 +31,21 @@ export interface PredictionResponse {
   lastModelRun: string;
 }
 
+export interface DatePredictionResponse {
+  symbol: AssetSymbol;
+  targetDateIso: string;
+  generatedAt: string;
+  horizonDays: number;
+  currentPriceUsd: number;
+  predictedPriceUsd: number;
+  lowEstimateUsd: number;
+  highEstimateUsd: number;
+  confidencePct: number;
+  direction: 'up' | 'down' | 'flat';
+  modelRunId: string;
+  lastModelRun: string;
+}
+
 const ASSET_CONFIG: Record<AssetSymbol, { ticker: BinanceSymbol; name: string }> = {
   BTC: { ticker: 'BTCUSDT', name: 'Bitcoin' },
   ETH: { ticker: 'ETHUSDT', name: 'Ethereum' },
@@ -126,12 +141,12 @@ function writeCache<T>(key: string, data: T) {
   }
 }
 
-async function request<T>(url: string, retry = MAX_RETRIES): Promise<T> {
+async function request<T>(url: string, init?: RequestInit, retry = MAX_RETRIES): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, { ...init, signal: controller.signal });
     if (!response.ok) {
       const message = await response.text();
       const error = new Error(requestError(response, message)) as Error & { status?: number };
@@ -150,7 +165,7 @@ async function request<T>(url: string, retry = MAX_RETRIES): Promise<T> {
 
     if (retry > 0 && shouldRetry) {
       await new Promise((resolve) => window.setTimeout(resolve, RETRY_DELAY_MS * (MAX_RETRIES - retry + 1)));
-      return request<T>(url, retry - 1);
+      return request<T>(url, init, retry - 1);
     }
 
     throw error;
@@ -374,6 +389,15 @@ async function getPredictionFromApi(symbol: AssetSymbol, timeframe: Timeframe): 
   return request<PredictionResponse>(`${API_BASE_URL}/prediction?${params.toString()}`);
 }
 
+async function getDatePredictionFromApi(symbol: AssetSymbol, targetDateIso: string): Promise<DatePredictionResponse> {
+  if (!API_BASE_URL) throw new Error('API base URL not configured.');
+  return request<DatePredictionResponse>(`${API_BASE_URL}/predictions/by-date`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ symbol, targetDateIso })
+  });
+}
+
 async function firstSuccessful<T>(requests: Array<() => Promise<T>>): Promise<T> {
   let firstError: unknown;
 
@@ -595,7 +619,11 @@ export const apiClient = {
       const sourceHistory = history ?? (await this.getHistoricalData(symbol, timeframe));
       return buildPrediction(symbol, timeframe, sourceHistory);
     }
-  }
+  },
+
+  async getPredictionByDate(symbol: AssetSymbol, targetDateIso: string) {
+    return getDatePredictionFromApi(symbol, targetDateIso);
+  },
 };
 
 

@@ -287,6 +287,43 @@ body {
   color: #f4c95e;
 }
 
+
+.date-prediction-form {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.date-prediction-form input {
+  border: 1px solid #33466f;
+  border-radius: 10px;
+  background: #0f1a2c;
+  color: #dbe4f0;
+  padding: 0.55rem 0.65rem;
+}
+
+.prediction-table-wrap {
+  margin-top: 1rem;
+}
+
+.prediction-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.prediction-table th,
+.prediction-table td {
+  border-bottom: 1px solid rgba(73, 92, 136, 0.5);
+  text-align: left;
+  padding: 0.45rem 0.35rem;
+}
+
+.prediction-table th {
+  color: #9ab0d2;
+  font-weight: 600;
+}
+
 .muted,
 .status {
   color: #90a1be;
