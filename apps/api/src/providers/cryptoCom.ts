@@ -1,4 +1,4 @@
-import { CandleProvider, ProviderFetchOptions, SupportedSymbol, UnifiedCandle } from './types';
+import { CandleProvider, ProviderFetchOptions, SupportedSymbol, UnifiedCandle } from './types.js';
 
 const CRYPTO_COM_BASE_URL = 'https://api.crypto.com/exchange/v1/public/get-candlestick';
 

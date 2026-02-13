@@ -1,4 +1,4 @@
-import { CandleProvider, ProviderFetchOptions, SupportedSymbol, UnifiedCandle } from './types';
+import { CandleProvider, ProviderFetchOptions, SupportedSymbol, UnifiedCandle } from './types.js';
 
 const COINBASE_BASE_URL = 'https://api.exchange.coinbase.com';
 

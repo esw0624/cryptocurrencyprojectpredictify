@@ -26,3 +26,40 @@ test('ensureAllRequestedSymbols throws when provider omits a requested symbol', 
     /missing ETH/
   );
 });
+
+test('firstSuccessful falls through providers until one succeeds', async () => {
+  const calls: string[] = [];
+
+  const result = await __internalApiClientHelpers.firstSuccessful<number>([
+    async () => {
+      calls.push('first');
+      throw new Error('first failed');
+    },
+    async () => {
+      calls.push('second');
+      return 42;
+    },
+    async () => {
+      calls.push('third');
+      return 99;
+    }
+  ]);
+
+  assert.equal(result, 42);
+  assert.deepEqual(calls, ['first', 'second']);
+});
+
+test('firstSuccessful throws when all providers fail', async () => {
+  await assert.rejects(
+    () =>
+      __internalApiClientHelpers.firstSuccessful([
+        async () => {
+          throw new Error('a failed');
+        },
+        async () => {
+          throw new Error('b failed');
+        }
+      ]),
+    /a failed/
+  );
+});

@@ -1,13 +1,13 @@
-import { CoinbaseClient } from '../providers/coinbase';
-import { CryptoComClient } from '../providers/cryptoCom';
-import { KrakenClient } from '../providers/kraken';
+import { CoinbaseClient } from '../providers/coinbase.js';
+import { CryptoComClient } from '../providers/cryptoCom.js';
+import { KrakenClient } from '../providers/kraken.js';
 import {
   CandleProvider,
   ProviderFetchOptions,
   SupportedSymbol,
   TOP_COIN_SYMBOLS,
   UnifiedCandle,
-} from '../providers/types';
+} from '../providers/types.js';
 
 export interface IngestResult {
   candles: UnifiedCandle[];

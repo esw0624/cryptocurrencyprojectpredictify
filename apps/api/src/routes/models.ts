@@ -4,8 +4,8 @@ import {
   TrainModelRequestDto,
   TrainModelRequestSchema,
   TrainModelResponseDto,
-} from '../../../../packages/shared/src/dto';
-import { AppError, validateBody } from '../lib/http';
+} from '../../../../packages/shared/src/dto/index.js';
+import { AppError, validateBody } from '../lib/http.js';
 
 export const modelsRouter = Router();
 
