@@ -14,7 +14,8 @@
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "node --test --experimental-strip-types tests/**/*.test.ts",
-    "install:deps": "node scripts/install-deps.mjs"
+    "install:deps": "node scripts/install-deps.mjs",
+    "check:merge-markers": "rg \"^(<<<<<<<|=======|>>>>>>>)\" -n --glob '!node_modules/**' --glob '!apps/web/node_modules/**' --glob '!pnpm-lock.yaml' . && (echo '\u274c Merge markers found' && exit 1) || echo '\u2705 No merge markers found'"
   },
   "devDependencies": {
     "eslint": "^9.23.0",

@@ -229,6 +229,25 @@ function ensureAllRequestedSymbols<T extends { symbol: AssetSymbol }>(
   return requestedSymbols.map((symbol) => bySymbol.get(symbol) as T);
 }
 
+function mergeSnapshotsBySymbol(requestedSymbols: AssetSymbol[], sources: MarketSnapshot[][]): MarketSnapshot[] {
+  const merged = new Map<AssetSymbol, MarketSnapshot>();
+
+  for (const rows of sources) {
+    for (const row of rows) {
+      if (!merged.has(row.symbol)) {
+        merged.set(row.symbol, row);
+      }
+    }
+  }
+
+  const missing = requestedSymbols.filter((symbol) => !merged.has(symbol));
+  if (missing.length > 0) {
+    throw new Error(`Unable to load market snapshots for ${missing.join(', ')}`);
+  }
+
+  return requestedSymbols.map((symbol) => merged.get(symbol) as MarketSnapshot);
+}
+
 type BinanceKline = [
   number,
   string,
@@ -333,6 +352,11 @@ function toCoinCapInterval(timeframe: Timeframe): { interval: 'm5' | 'h1' | 'h6'
     default:
       return { interval: 'h6', lookbackMs: dayMs * 30 };
   }
+}
+
+function mean(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function toCoinGeckoDays(timeframe: Timeframe): string {
@@ -559,14 +583,22 @@ export const apiClient = {
         return data;
       } catch {
         try {
-          const data = await firstSuccessful([
-            () => getMarketSnapshotsFromBinance(symbols),
-            () => getMarketSnapshotsFromCoinCap(symbols),
-            () => getMarketSnapshotsFromCoinGecko(symbols)
+          const providerResults = await Promise.allSettled([
+            getMarketSnapshotsFromBinance(symbols),
+            getMarketSnapshotsFromCoinCap(symbols),
+            getMarketSnapshotsFromCoinGecko(symbols)
           ]);
-          writeCache(cacheToken, data);
-          writeMemoryCache(cacheToken, data);
-          return data;
+
+          const snapshots = mergeSnapshotsBySymbol(
+            symbols,
+            providerResults
+              .filter((result): result is PromiseFulfilledResult<MarketSnapshot[]> => result.status === 'fulfilled')
+              .map((result) => result.value)
+          );
+
+          writeCache(cacheToken, snapshots);
+          writeMemoryCache(cacheToken, snapshots);
+          return snapshots;
         } catch {
           const cached = readCache<MarketSnapshot[]>(cacheToken);
           if (cached?.length) {
@@ -629,5 +661,6 @@ export const apiClient = {
 
 export const __internalApiClientHelpers = {
   ensureAllRequestedSymbols,
-  firstSuccessful
+  firstSuccessful,
+  mergeSnapshotsBySymbol
 };

@@ -63,3 +63,29 @@ test('firstSuccessful throws when all providers fail', async () => {
     /a failed/
   );
 });
+
+
+test('mergeSnapshotsBySymbol merges partial provider data into complete ordered result', () => {
+  const merged = __internalApiClientHelpers.mergeSnapshotsBySymbol(
+    ['BTC', 'ETH', 'XRP'],
+    [
+      [
+        { symbol: 'BTC', name: 'Bitcoin', priceUsd: 1, change24hPct: 1, volume24hUsd: 1, marketCapUsd: 1 },
+        { symbol: 'XRP', name: 'XRP', priceUsd: 3, change24hPct: 3, volume24hUsd: 3, marketCapUsd: 3 }
+      ],
+      [{ symbol: 'ETH', name: 'Ethereum', priceUsd: 2, change24hPct: 2, volume24hUsd: 2, marketCapUsd: 2 }]
+    ]
+  );
+
+  assert.deepEqual(merged.map((row) => row.symbol), ['BTC', 'ETH', 'XRP']);
+});
+
+test('mergeSnapshotsBySymbol throws when still missing symbols after merging', () => {
+  assert.throws(
+    () =>
+      __internalApiClientHelpers.mergeSnapshotsBySymbol(['BTC', 'ETH'], [
+        [{ symbol: 'BTC', name: 'Bitcoin', priceUsd: 1, change24hPct: 1, volume24hUsd: 1, marketCapUsd: 1 }]
+      ]),
+    /ETH/
+  );
+});
