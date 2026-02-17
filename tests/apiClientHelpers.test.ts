@@ -89,3 +89,19 @@ test('mergeSnapshotsBySymbol throws when still missing symbols after merging', (
     /ETH/
   );
 });
+
+test('mergeSnapshotsBySymbol uses median values across providers to reduce outlier impact', () => {
+  const merged = __internalApiClientHelpers.mergeSnapshotsBySymbol(
+    ['BTC'],
+    [
+      [{ symbol: 'BTC', name: 'Bitcoin', priceUsd: 100, change24hPct: 1, volume24hUsd: 1000, marketCapUsd: 10000 }],
+      [{ symbol: 'BTC', name: 'Bitcoin', priceUsd: 200, change24hPct: 2, volume24hUsd: 2000, marketCapUsd: 20000 }],
+      [{ symbol: 'BTC', name: 'Bitcoin', priceUsd: 5000, change24hPct: 99, volume24hUsd: 900000, marketCapUsd: 9000000 }]
+    ]
+  );
+
+  assert.equal(merged[0]?.priceUsd, 200);
+  assert.equal(merged[0]?.change24hPct, 2);
+  assert.equal(merged[0]?.volume24hUsd, 2000);
+  assert.equal(merged[0]?.marketCapUsd, 20000);
+});
