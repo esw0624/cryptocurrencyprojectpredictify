@@ -23,8 +23,11 @@ const env = (import.meta as {
     VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY?: string;
   };
 }).env;
-const supabaseUrl = env?.VITE_SUPABASE_URL?.replace(/\/$/, '');
-const supabaseAnonKey = env?.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY ?? env?.VITE_SUPABASE_ANON_KEY;
+const defaultSupabaseUrl = 'https://pietlhvbfihcgfxmoysn.supabase.co';
+const defaultSupabasePublishableKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpZXRsaHZiZmloY2dmeG1veXNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MTk0NTMsImV4cCI6MjA4NjQ5NTQ1M30.UaXACKWyUR8vYJQT9Fd-eXXnIK4s2mkF7Dk0V694Qg8';
+
+const supabaseUrl = (env?.VITE_SUPABASE_URL ?? defaultSupabaseUrl).replace(/\/$/, '');
+const supabaseAnonKey = env?.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY ?? env?.VITE_SUPABASE_ANON_KEY ?? defaultSupabasePublishableKey;
 const STORAGE_KEY = 'predictify-auth-session';
 
 export const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey);
