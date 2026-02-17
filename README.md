@@ -77,8 +77,11 @@ For backend/database environment (root `.env` or `apps/api/.env`):
 SUPABASE_URL=https://pietlhvbfihcgfxmoysn.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 
-# Connection pooling (app/runtime)
+# Connection pooling (transaction mode, best for short-lived serverless requests)
 DATABASE_URL="postgresql://postgres.pietlhvbfihcgfxmoysn:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+
+# Connection pooling (session mode, best for long-lived app sessions)
+DATABASE_URL="postgresql://postgres.pietlhvbfihcgfxmoysn:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:5432/postgres"
 
 # Direct connection (migrations)
 DIRECT_URL="postgresql://postgres:[YOUR-PASSWORD]@db.pietlhvbfihcgfxmoysn.supabase.co:5432/postgres"
