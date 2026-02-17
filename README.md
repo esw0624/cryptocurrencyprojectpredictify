@@ -59,6 +59,29 @@ npm test
 
 For a practical implementation plan for date-based ML predictions and near real-time price updates (BTC/ETH/XRP), see `docs/CRYPTO_PREDICTION_SYSTEM_GUIDE.md`.
 
+## Platform Expansion Roadmap
+
+After the API reliability foundation is stable, the next implementation phases are:
+
+1. **Auth** — Supabase Auth integration with JWT-backed sessions.
+2. **Alerts + Notifications** — User-defined alert rules and scheduled notification jobs (email, push, webhook).
+3. **User Portfolio Features** — Portfolio tracking and watchlists.
+4. **Billing + Tiering** — Subscription plans, usage tiers, and rate limits.
+5. **Audit/Admin Controls** — Audit logs, admin visibility, and control surfaces.
+
+## Platform Feature Foundations (Implemented)
+
+The API now includes foundational authenticated endpoints for core platform capabilities:
+
+- `GET /api/me` — current authenticated user context
+- Alerts: `GET/POST/DELETE /api/alerts/rules`
+- Portfolio: `GET/POST /api/portfolio/positions`
+- Watchlists: `GET/POST/DELETE /api/watchlists/items`
+- Billing tier profile: `GET /api/billing/profile`, `POST /api/billing/profile/tier`
+- Admin audit logs: `GET /api/admin/audit-logs` (admin role only)
+
+For local development, use `Authorization: Bearer dev_<userId>` (e.g. `dev_demo` or `dev_admin`) to authenticate requests against these new endpoints.
+
 ## Public Hosting + Custom Domain
 
 If you want a production URL for anyone to open (and a custom domain), follow `DEPLOYMENT_GUIDE.md`.

@@ -5,6 +5,7 @@ import { historyRouter } from './history.js';
 import { marketsRouter } from './markets.js';
 import { modelsRouter } from './models.js';
 import { predictionsRouter } from './predictions.js';
+import { platformRouter } from './platform.js';
 
 export const apiRouter = Router();
 
@@ -17,3 +18,5 @@ apiRouter.use('/api', marketsRouter);
 apiRouter.use('/api', historyRouter);
 apiRouter.use('/api', predictionsRouter);
 apiRouter.use('/api', modelsRouter);
+
+apiRouter.use('/api', platformRouter);
