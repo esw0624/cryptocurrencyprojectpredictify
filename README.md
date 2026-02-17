@@ -55,6 +55,50 @@ npm run typecheck
 npm test
 ```
 
+
+## Supabase Auth Setup (Client + Admin UI)
+
+The web app now includes two sign-in experiences:
+
+- **Client Sign In**: passwordless email magic link (`signInWithOtp`) with email verification.
+- **Admin Sign In**: email + password (`signInWithPassword`) and admin-role checks.
+
+Create `apps/web/.env.local`:
+
+```bash
+VITE_SUPABASE_URL=https://pietlhvbfihcgfxmoysn.supabase.co
+VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_<your-publishable-key>
+# Backward-compatible alias (optional)
+VITE_SUPABASE_ANON_KEY=sb_publishable_<your-publishable-key>
+# Optional: comma-separated admin email allowlist
+VITE_ADMIN_EMAIL_ALLOWLIST=admin@yourcompany.com
+# Optional if API runs on a different host
+VITE_API_BASE_URL=http://localhost:4000/api
+```
+
+For backend/database environment (root `.env` or `apps/api/.env`):
+
+```bash
+SUPABASE_URL=https://pietlhvbfihcgfxmoysn.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+
+# Connection pooling (app/runtime)
+DATABASE_URL="postgresql://postgres.pietlhvbfihcgfxmoysn:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+
+# Direct connection (migrations)
+DIRECT_URL="postgresql://postgres.pietlhvbfihcgfxmoysn:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:5432/postgres"
+```
+
+In Supabase dashboard:
+
+1. Enable **Email** provider in Auth settings.
+2. Configure your redirect URL to include your app origin (e.g. `http://localhost:5173`).
+3. For admins, either:
+   - set `app_metadata.role = "admin"`, or
+   - add their email to `VITE_ADMIN_EMAIL_ALLOWLIST`.
+
+With this setup, clients are verified via email before signing in, while admins get a separate UI and access to the admin console.
+
 ## Architecture Playbook
 
 For a practical implementation plan for date-based ML predictions and near real-time price updates (BTC/ETH/XRP), see `docs/CRYPTO_PREDICTION_SYSTEM_GUIDE.md`.

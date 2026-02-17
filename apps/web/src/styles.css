@@ -413,3 +413,43 @@ body {
     justify-content: space-between;
   }
 }
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+}
+
+.auth-card {
+  width: min(560px, 100%);
+}
+
+.auth-card h1 {
+  margin: 0.4rem 0;
+}
+
+.auth-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.auth-form input {
+  border: 1px solid rgba(104, 126, 178, 0.5);
+  border-radius: 10px;
+  background: rgba(10, 18, 36, 0.9);
+  color: #f3f7ff;
+  padding: 0.6rem 0.7rem;
+}
+
+.auth-submit {
+  width: fit-content;
+  margin-top: 0.3rem;
+}
