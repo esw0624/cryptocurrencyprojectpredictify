@@ -12,7 +12,7 @@ const files = [
   },
   {
     path: 'apps/web/.env.local',
-    content: `VITE_SUPABASE_URL=https://pietlhvbfihcgfxmoysn.supabase.co\nVITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpZXRsaHZiZmloY2dmeG1veXNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MTk0NTMsImV4cCI6MjA4NjQ5NTQ1M30.UaXACKWyUR8vYJQT9Fd-eXXnIK4s2mkF7Dk0V694Qg8\n# Optional backward-compatible alias\nVITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpZXRsaHZiZmloY2dmeG1veXNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MTk0NTMsImV4cCI6MjA4NjQ5NTQ1M30.UaXACKWyUR8vYJQT9Fd-eXXnIK4s2mkF7Dk0V694Qg8\n# Set this to your admin email(s), comma-separated\nVITE_ADMIN_EMAIL_ALLOWLIST=you@example.com\n# Optional if API runs on a different host\nVITE_API_BASE_URL=http://localhost:4000/api\n`
+    content: `VITE_SUPABASE_URL=https://pietlhvbfihcgfxmoysn.supabase.co\nVITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_DprFIDbfkSExWXj5ubDedg_x9BMtmHM\n# Optional backward-compatible alias\nVITE_SUPABASE_ANON_KEY=sb_publishable_DprFIDbfkSExWXj5ubDedg_x9BMtmHM\n# Set this to your admin email(s), comma-separated\nVITE_ADMIN_EMAIL_ALLOWLIST=you@example.com\n# Optional if API runs on a different host\nVITE_API_BASE_URL=http://localhost:4000/api\n`
   }
 ];
 
