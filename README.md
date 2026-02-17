@@ -63,18 +63,13 @@ The web app now includes two sign-in experiences:
 - **Client Sign In**: passwordless email magic link (`signInWithOtp`) with email verification.
 - **Admin Sign In**: email + password (`signInWithPassword`) and admin-role checks.
 
-Create `apps/web/.env.local`:
+Create `apps/web/.env.local` from the checked-in example:
 
 ```bash
-VITE_SUPABASE_URL=https://pietlhvbfihcgfxmoysn.supabase.co
-VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_<your-publishable-key>
-# Backward-compatible alias (optional)
-VITE_SUPABASE_ANON_KEY=sb_publishable_<your-publishable-key>
-# Optional: comma-separated admin email allowlist
-VITE_ADMIN_EMAIL_ALLOWLIST=admin@yourcompany.com
-# Optional if API runs on a different host
-VITE_API_BASE_URL=http://localhost:4000/api
+cp apps/web/.env.example apps/web/.env.local
 ```
+
+`apps/web/.env.example` is prefilled with this project's Supabase URL and publishable key. Update `VITE_ADMIN_EMAIL_ALLOWLIST` if you want to use a different admin email.
 
 For backend/database environment (root `.env` or `apps/api/.env`):
 
@@ -86,7 +81,7 @@ SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 DATABASE_URL="postgresql://postgres.pietlhvbfihcgfxmoysn:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
 
 # Direct connection (migrations)
-DIRECT_URL="postgresql://postgres.pietlhvbfihcgfxmoysn:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:5432/postgres"
+DIRECT_URL="postgresql://postgres:[YOUR-PASSWORD]@db.pietlhvbfihcgfxmoysn.supabase.co:5432/postgres"
 ```
 
 In Supabase dashboard:
