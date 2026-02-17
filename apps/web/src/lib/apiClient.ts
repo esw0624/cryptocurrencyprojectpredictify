@@ -229,23 +229,47 @@ function ensureAllRequestedSymbols<T extends { symbol: AssetSymbol }>(
   return requestedSymbols.map((symbol) => bySymbol.get(symbol) as T);
 }
 
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const midpoint = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) {
+    return sorted[midpoint] as number;
+  }
+
+  return ((sorted[midpoint - 1] as number) + (sorted[midpoint] as number)) / 2;
+}
+
 function mergeSnapshotsBySymbol(requestedSymbols: AssetSymbol[], sources: MarketSnapshot[][]): MarketSnapshot[] {
-  const merged = new Map<AssetSymbol, MarketSnapshot>();
+  const bySymbol = new Map<AssetSymbol, MarketSnapshot[]>();
 
   for (const rows of sources) {
     for (const row of rows) {
-      if (!merged.has(row.symbol)) {
-        merged.set(row.symbol, row);
-      }
+      const bucket = bySymbol.get(row.symbol) ?? [];
+      bucket.push(row);
+      bySymbol.set(row.symbol, bucket);
     }
   }
 
-  const missing = requestedSymbols.filter((symbol) => !merged.has(symbol));
+  const missing = requestedSymbols.filter((symbol) => !bySymbol.has(symbol));
   if (missing.length > 0) {
     throw new Error(`Unable to load market snapshots for ${missing.join(', ')}`);
   }
 
-  return requestedSymbols.map((symbol) => merged.get(symbol) as MarketSnapshot);
+  return requestedSymbols.map((symbol) => {
+    const candidates = bySymbol.get(symbol) as MarketSnapshot[];
+    const reference = candidates[0] as MarketSnapshot;
+
+    return {
+      symbol,
+      name: reference.name,
+      priceUsd: median(candidates.map((row) => row.priceUsd)),
+      change24hPct: median(candidates.map((row) => row.change24hPct)),
+      volume24hUsd: median(candidates.map((row) => row.volume24hUsd)),
+      marketCapUsd: median(candidates.map((row) => row.marketCapUsd))
+    };
+  });
 }
 
 type BinanceKline = [
@@ -352,11 +376,6 @@ function toCoinCapInterval(timeframe: Timeframe): { interval: 'm5' | 'h1' | 'h6'
     default:
       return { interval: 'h6', lookbackMs: dayMs * 30 };
   }
-}
-
-function mean(values: number[]): number {
-  if (values.length === 0) return 0;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function toCoinGeckoDays(timeframe: Timeframe): string {
