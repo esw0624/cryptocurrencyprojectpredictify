@@ -91,10 +91,151 @@ interface PasswordSignInResponse {
   user: AuthUser;
 }
 
+interface VerifyOtpResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_at?: number;
+  user: AuthUser;
+}
+
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+    const decoded = window.atob(padded);
+    return JSON.parse(decoded) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function buildSession(payload: {
+  access_token: string;
+  refresh_token?: string;
+  expires_at?: number;
+  user: AuthUser;
+}): AuthSession {
+  return {
+    access_token: payload.access_token,
+    refresh_token: payload.refresh_token,
+    expires_at: payload.expires_at,
+    user: payload.user
+  };
+}
+
+function readHashSession(): AuthSession | null {
+  if (typeof window === 'undefined') return null;
+
+  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+  if (!hash) return null;
+
+  const params = new URLSearchParams(hash);
+  const accessToken = params.get('access_token');
+  if (!accessToken) return null;
+
+  const userRaw = params.get('user');
+  let user: AuthUser | null = null;
+
+  if (userRaw) {
+    try {
+      user = JSON.parse(decodeURIComponent(userRaw)) as AuthUser;
+    } catch {
+      user = null;
+    }
+  }
+
+  if (!user) {
+    const payload = decodeJwtPayload(accessToken);
+    const sub = payload?.sub;
+    const email = payload?.email;
+    if (typeof sub === 'string') {
+      user = {
+        id: sub,
+        ...(typeof email === 'string' ? { email } : {})
+      };
+    }
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  const expiresAtRaw = params.get('expires_at');
+  const expiresAt = expiresAtRaw ? Number.parseInt(expiresAtRaw, 10) : undefined;
+
+  return buildSession({
+    access_token: accessToken,
+    refresh_token: params.get('refresh_token') ?? undefined,
+    expires_at: Number.isFinite(expiresAt) ? expiresAt : undefined,
+    user
+  });
+}
+
+function cleanAuthParamsFromUrl() {
+  if (typeof window === 'undefined') return;
+
+  const url = new URL(window.location.href);
+  const authQueryParams = ['token_hash', 'type', 'next'];
+  let hasAuthQueryParams = false;
+
+  for (const key of authQueryParams) {
+    if (url.searchParams.has(key)) {
+      url.searchParams.delete(key);
+      hasAuthQueryParams = true;
+    }
+  }
+
+  const hadHash = Boolean(url.hash);
+  if (hadHash) {
+    url.hash = '';
+  }
+
+  if (hadHash || hasAuthQueryParams) {
+    window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
+  }
+}
+
+async function readSessionFromUrl(): Promise<AuthSession | null> {
+  if (typeof window === 'undefined') return null;
+
+  const hashSession = readHashSession();
+  if (hashSession) {
+    cleanAuthParamsFromUrl();
+    return hashSession;
+  }
+
+  const url = new URL(window.location.href);
+  const tokenHash = url.searchParams.get('token_hash');
+  const type = url.searchParams.get('type');
+  if (!tokenHash || !type) return null;
+
+  try {
+    const payload = await authRequest<VerifyOtpResponse>('/auth/v1/verify', {
+      token_hash: tokenHash,
+      type
+    });
+    cleanAuthParamsFromUrl();
+    return buildSession(payload);
+  } catch {
+    return null;
+  }
+}
+
 export const supabase = hasSupabaseEnv
   ? {
       auth: {
         async getSession() {
+          const urlSession = await readSessionFromUrl();
+          if (urlSession) {
+            writeSession(urlSession);
+            notify('SIGNED_IN', urlSession);
+            return { data: { session: urlSession } };
+          }
+
           return { data: { session: readSession() } };
         },
         onAuthStateChange(listener: AuthListener) {
@@ -127,12 +268,7 @@ export const supabase = hasSupabaseEnv
               email,
               password
             });
-            const session: AuthSession = {
-              access_token: payload.access_token,
-              refresh_token: payload.refresh_token,
-              expires_at: payload.expires_at,
-              user: payload.user
-            };
+            const session = buildSession(payload);
             writeSession(session);
             notify('SIGNED_IN', session);
             return { data: { user: payload.user, session }, error: null };
