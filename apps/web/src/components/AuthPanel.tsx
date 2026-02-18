@@ -5,6 +5,15 @@ import { hasSupabaseEnv, supabase } from '../lib/supabaseClient';
 
 type AuthMode = 'client' | 'admin';
 
+const configuredAuthRedirectUrl = (import.meta as { env?: { VITE_AUTH_REDIRECT_URL?: string } }).env?.VITE_AUTH_REDIRECT_URL?.trim();
+
+function getAuthRedirectUrl() {
+  if (configuredAuthRedirectUrl) return configuredAuthRedirectUrl;
+
+  if (typeof window === 'undefined') return undefined;
+  return window.location.origin;
+}
+
 export function AuthPanel() {
   const [mode, setMode] = useState<AuthMode>('client');
   const [email, setEmail] = useState('');
@@ -23,13 +32,16 @@ export function AuthPanel() {
 
     const { error: requestError } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin }
+      options: { emailRedirectTo: getAuthRedirectUrl() }
     });
 
     if (requestError) {
       setError(requestError.message);
     } else {
-      setMessage('Magic link sent. Open your email and click the verification link to sign in.');
+      const redirectUrl = getAuthRedirectUrl();
+      setMessage(
+        `Magic link sent. Open your email and click the verification link to sign in${redirectUrl ? ` (redirect: ${redirectUrl})` : ''}.`
+      );
     }
 
     setLoading(false);
@@ -67,7 +79,7 @@ export function AuthPanel() {
       <div className="auth-page">
         <section className="auth-card panel">
           <h1>Connect Supabase first</h1>
-          <p className="muted">Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY in apps/web/.env.local.</p>
+          <p className="muted">Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY in apps/web/.env.local. Optionally set VITE_AUTH_REDIRECT_URL to your deployed web URL.</p>
         </section>
       </div>
     );
