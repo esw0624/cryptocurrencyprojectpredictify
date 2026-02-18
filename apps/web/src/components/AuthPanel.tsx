@@ -8,8 +8,10 @@ type AuthMode = 'client' | 'admin';
 const configuredAuthRedirectUrl = (import.meta as { env?: { VITE_AUTH_REDIRECT_URL?: string } }).env?.VITE_AUTH_REDIRECT_URL?.trim();
 
 function getAuthRedirectUrl() {
-  if (!configuredAuthRedirectUrl) return undefined;
-  return configuredAuthRedirectUrl;
+  if (configuredAuthRedirectUrl) return configuredAuthRedirectUrl;
+
+  if (typeof window === 'undefined') return undefined;
+  return window.location.origin;
 }
 
 export function AuthPanel() {
@@ -38,7 +40,7 @@ export function AuthPanel() {
     } else {
       const redirectUrl = getAuthRedirectUrl();
       setMessage(
-        `Magic link sent. Open your email and click the verification link to sign in${redirectUrl ? ` (redirect: ${redirectUrl})` : ' (using Supabase default redirect URL)'}.`
+        `Magic link sent. Open your email and click the verification link to sign in${redirectUrl ? ` (redirect: ${redirectUrl})` : ''}.`
       );
     }
 

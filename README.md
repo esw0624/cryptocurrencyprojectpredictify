@@ -91,7 +91,7 @@ In Supabase dashboard:
 
 1. Enable **Email** provider in Auth settings.
 2. Configure your redirect URL to include your app origin (e.g. `http://localhost:5173`).
-3. For reliable email links across environments, set `VITE_AUTH_REDIRECT_URL` (for example your deployed URL) in `apps/web/.env.local` and allow that URL in Supabase Auth redirect settings. If this is not set, Supabase falls back to its default redirect URL.
+3. For reliable email links across environments, set `VITE_AUTH_REDIRECT_URL` (for example your deployed URL) in `apps/web/.env.local` and allow that URL in Supabase Auth redirect settings.
 4. For admins, either:
    - set `app_metadata.role = "admin"`, or
    - add their email to `VITE_ADMIN_EMAIL_ALLOWLIST`.
